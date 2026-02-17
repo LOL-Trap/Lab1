@@ -17,4 +17,4 @@
 - [Кира] - Remove Parameter
 
 
-Hello World!
+Hello World
