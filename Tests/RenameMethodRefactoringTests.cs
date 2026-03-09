@@ -104,11 +104,16 @@ namespace Tests
 
         //6
         [Fact]
-        public void Apply_DoesNothing_When_Method_NotFound()
+        public void Apply_Renames_Method_Call_Inside_Other_Method()
         {
             var refactoring = new RenameMethodRefactoring();
 
-            string code = "void test() { }";
+            string code = @"
+            void calc() {}
+            void test() 
+            {
+                calc();
+            }";
 
             var parameters = new RefactoringParameters();
             parameters.Parameters["oldName"] = "calc";
@@ -116,7 +121,14 @@ namespace Tests
 
             string result = refactoring.Apply(code, parameters);
 
-            Assert.Equal("void test() { }", result);
+            string expected = @"
+            void calculate() {}
+            void test() 
+            {
+                calculate();
+            }";
+
+            Assert.Equal(expected, result);
         }
 
         //7
