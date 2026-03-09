@@ -109,7 +109,7 @@ namespace Tests
             var refactoring = new RenameMethodRefactoring();
 
             string code = @"
-            void calc() {}
+            void calc() { }
             void test() 
             {
                 calc();
@@ -122,7 +122,7 @@ namespace Tests
             string result = refactoring.Apply(code, parameters);
 
             string expected = @"
-            void calculate() {}
+            void calculate() { }
             void test() 
             {
                 calculate();
