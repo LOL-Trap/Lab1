@@ -5,7 +5,7 @@ namespace Tests
 {
     public class RenameMethodRefactoringTests
     {
-        //1
+        //1 Перейменування оголошення методу
         [Fact]
         public void Apply_Renames_Method_Declaration()
         {
@@ -22,7 +22,7 @@ namespace Tests
             Assert.Equal("void calculate() { }", result);
         }
 
-        //2
+        //2 Перейменування виклику методу
         [Fact]
         public void Apply_Renames_Method_Call()
         {
@@ -39,7 +39,7 @@ namespace Tests
             Assert.Equal("calculate();", result);
         }
 
-        //3
+        //3 Перейменування у кількох місцях
         [Fact]
         public void Apply_Renames_Method_InMultiplePlaces()
         {
@@ -64,7 +64,7 @@ namespace Tests
             Assert.Equal(expected, result);
         }
 
-        //4
+        //4 Не перейменовувати частини інших слів
         [Fact]
         public void Apply_DoesNotRename_PartialMatches()
         {
@@ -87,7 +87,7 @@ namespace Tests
             Assert.Equal(expected, result);
         }
 
-        //5
+        //5 Помилка якщо нова назва — ключове слово
         [Fact]
         public void Apply_Throws_Exception_When_NewName_IsReservedKeyword()
         {
@@ -102,7 +102,7 @@ namespace Tests
             Assert.Throws<InvalidOperationException>(() => refactoring.Apply(code, parameters));
         }
 
-        //6
+        //6 Перейменування методу всередині іншого методу
         [Fact]
         public void Apply_Renames_Method_Call_Inside_Other_Method()
         {
@@ -131,7 +131,7 @@ namespace Tests
             Assert.Equal(expected, result);
         }
 
-        //7
+        //7 Метод з параметрами
         [Fact]
         public void Apply_Renames_Method_With_Parameters()
         {
@@ -148,7 +148,7 @@ namespace Tests
             Assert.Equal("int sum(int a, int b) { return a+b; }", result);
         }
 
-        //8
+        //8 Статичний метод
         [Fact]
         public void Apply_Renames_Static_Method()
         {
@@ -165,7 +165,7 @@ namespace Tests
             Assert.Equal("static void calculate() { }", result);
         }
 
-        //9
+        //9 Метод у класі
         [Fact]
         public void Apply_Renames_Method_In_Class()
         {
@@ -192,7 +192,7 @@ namespace Tests
             Assert.Equal(expected, result);
         }
 
-        //10
+        //10 Перейменування методу і його викликів
         [Fact]
         public void Apply_Renames_Method_And_All_Calls()
         {
