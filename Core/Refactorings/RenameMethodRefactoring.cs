@@ -17,8 +17,6 @@ namespace Core.Refactorings
 
         public string Apply(string code, RefactoringParameters parameters)
         {
-            string oldName = parameters.Get<string>("oldName");
-            string newName = parameters.Get<string>("newName");
 
             // Реалізація поки відсутня
             return code;
