@@ -1,6 +1,6 @@
 ﻿using Core.Models;
 
-namespace Core.interfaces
+namespace Core.Interfaces
 {
     public interface IRefactoring
     {
