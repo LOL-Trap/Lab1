@@ -1,4 +1,4 @@
-﻿using Core.interfaces;
+﻿using Core.Interfaces;
 using Core.Models;
 
 namespace Core.Refactorings
