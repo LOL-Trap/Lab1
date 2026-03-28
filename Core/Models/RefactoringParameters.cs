@@ -1,11 +1,14 @@
-﻿namespace Core.Models
+using System.Collections.Generic;
+
+namespace Core.Models
 {
     public class RefactoringParameters
     {
-        public Dictionary<string, object> Parameters { get; set; } = new();
-        public T Get<T>(string key)
+        public Dictionary<string, string> Parameters { get; set; }
+
+        public RefactoringParameters()
         {
-            return Parameters.ContainsKey(key) ? (T)Parameters(key) : default(T);
+            Parameters = new Dictionary<string, string>();
         }
     }
 }
