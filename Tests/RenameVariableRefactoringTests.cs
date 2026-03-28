@@ -1,11 +1,11 @@
 ﻿using Core.Models;
 using Core.Refactorings;
+using Xunit;
 
 namespace Tests
 {
     public class RenameVariableRefactoringTests
     {
-        // 1 Перейменування оголошення змінної
         [Fact]
         public void Apply_Renames_Variable_Declaration()
         {
