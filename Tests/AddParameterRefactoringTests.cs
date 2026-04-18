@@ -3,7 +3,7 @@ using Core.Models;
 
 namespace Tests
 {
-    public class AddParameterRefactoringTests
+    public class AddParameterTests
     {
         [Fact]
         public void Apply_Adds_Parameter_To_End()
