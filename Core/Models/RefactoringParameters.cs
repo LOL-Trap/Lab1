@@ -4,11 +4,11 @@ namespace Core.Models
 {
     public class RefactoringParameters
     {
-        public Dictionary<string, string> Parameters { get; set; }
+        public Dictionary<string, object> Parameters { get; set; } = new();
 
-        public RefactoringParameters()
+        public T Get<T>(string key)
         {
-            Parameters = new Dictionary<string, string>();
+            return Parameters.ContainsKey(key) ? (T)Parameters[key] : default(T);
         }
     }
 }
