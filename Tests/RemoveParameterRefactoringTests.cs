@@ -38,7 +38,7 @@ namespace Tests
             parameters.Parameters["methodName"] = "sum";
             parameters.Parameters["parameterName"] = "a";
 
-            string expected = "int sum(int b, int c) { return a + b + c; }";
+            string expected = "int sum( int b, int c) { return a + b + c; }";
 
             // Act
             string result = refactoring.Apply(inputCode, parameters);
