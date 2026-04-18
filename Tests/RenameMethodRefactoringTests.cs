@@ -71,7 +71,7 @@ namespace Tests
             var refactoring = new RenameMethodRefactoring();
 
             string code = @"
-            void calc() { } 
+            void calc() { }
             void calculator() { }";
 
             var parameters = new RefactoringParameters();
