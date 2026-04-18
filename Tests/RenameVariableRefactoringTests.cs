@@ -1,5 +1,6 @@
 ﻿using Core.Models;
 using Core.Refactorings;
+using Xunit;
 
 namespace Tests
 {
