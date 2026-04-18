@@ -1,4 +1,5 @@
-﻿using Core.Models;
+﻿using Core.Interfaces;
+using Core.Models;
 using System.Text.RegularExpressions;
 
 namespace Core.Refactorings
