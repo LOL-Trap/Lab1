@@ -3,7 +3,6 @@ using Core.Models;
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Collections.Generic;
 
 namespace Core.Refactorings
 {
@@ -11,7 +10,7 @@ namespace Core.Refactorings
     {
         public string Name => "Add Parameter";
 
-        public string Description => "Adds a new parameter to a method declaration and updates return.";
+        public string Description => "Adds a new parameter to a method declaration.";
 
         public bool CanApply(string code)
         {
@@ -41,51 +40,48 @@ namespace Core.Refactorings
             string oldParams = match.Groups["params"].Value;
 
             // ======================
-            // 2. НОРМАЛІЗАЦІЯ ПАРАМЕТРІВ
+            // 2. ПЕРЕВІРКА НА ДУБЛЬ
             // ======================
-            var paramList = oldParams
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => Regex.Replace(p, @"\s+", " ").Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .ToList();
+            var existingParams = oldParams
+                .Split(',', StringSplitOptions.RemoveEmptyEntries);
 
-            // перевірка на дубль
-            bool alreadyExists = paramList.Any(p =>
+            bool alreadyExists = existingParams.Any(p =>
             {
-                var parts = p.Split(' ');
+                var parts = p.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 return parts.Length >= 2 && parts.Last() == parameterName;
             });
 
-            if (!alreadyExists)
-            {
-                paramList.Add($"{parameterType} {parameterName}");
-            }
-
-            string newParams = string.Join(", ", paramList);
+            if (alreadyExists)
+                return code;
 
             // ======================
-            // 3. ЗАМІНА СИГНАТУРИ
+            // 3. ФОРМУЄМО НОВИЙ СПИСОК (БЕЗ ЛАМАННЯ ПРОБІЛІВ)
+            // ======================
+            string newParams;
+
+            if (string.IsNullOrWhiteSpace(oldParams))
+            {
+                newParams = $"{parameterType} {parameterName}";
+            }
+            else
+            {
+                // шукаємо пробіли в кінці
+                var trailingSpacesMatch = Regex.Match(oldParams, @"\s*$");
+                string trailingSpaces = trailingSpacesMatch.Value;
+
+                // основна частина без кінцевих пробілів
+                string coreParams = oldParams.Substring(0, oldParams.Length - trailingSpaces.Length);
+
+                newParams = coreParams + $", {parameterType} {parameterName}" + trailingSpaces;
+            }
+
+            // ======================
+            // 4. ЗАМІНА СИГНАТУРИ
             // ======================
             code =
                 code.Substring(0, match.Groups["params"].Index) +
                 newParams +
                 code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
-
-            // ======================
-            // 4. ОНОВЛЕННЯ return
-            // ======================
-            string returnPattern = @"return\s+(?<expr>[^;]+);";
-
-            code = Regex.Replace(code, returnPattern, m =>
-            {
-                string expr = m.Groups["expr"].Value.Trim();
-
-                // якщо вже є b — не дублюємо
-                if (expr.Split(',').Any(e => e.Trim() == parameterName))
-                    return m.Value;
-
-                return $"return {expr}, {parameterName};";
-            });
 
             return code;
         }
