@@ -10,30 +10,34 @@ namespace Core.Refactorings
         public string Name => "Remove Parameter";
         public string Description => "Removes a parameter from a method declaration and its calls.";
 
-        public bool CanApply(string code)
-        {
-            return true;
-        }
+        public bool CanApply(string code) => true;
 
         public string Apply(string code, RefactoringParameters parameters)
         {
             string methodName = parameters.Get<string>("methodName");
             string parameterName = parameters.Get<string>("parameterName");
 
-            if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(parameterName))
+            if (string.IsNullOrWhiteSpace(methodName) ||
+                string.IsNullOrWhiteSpace(parameterName))
                 return code;
 
-            //  1. СИГНАТУРА
-            string methodPattern = $@"(\b{Regex.Escape(methodName)}\s*\()([^)]*)(\))";
-            var match = Regex.Match(code, methodPattern);
+            // =========================
+            // 1. SIGNATURE (як у тебе)
+            // =========================
+            string pattern =
+                $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
+
+            var match = Regex.Match(code, pattern, RegexOptions.Singleline);
 
             if (!match.Success)
                 return code;
 
-            var paramList = match.Groups[2].Value
+            string oldParams = match.Groups["params"].Value;
+
+            var paramList = oldParams
                 .Split(',')
-                .Select(p => p.Trim())
-                .Where(p => p.Length > 0)
+                .Select(p => Regex.Replace(p, @"\s+", " ").Trim())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
                 .ToList();
 
             int indexToRemove = -1;
@@ -41,7 +45,8 @@ namespace Core.Refactorings
             for (int i = 0; i < paramList.Count; i++)
             {
                 var parts = paramList[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts[^1] == parameterName)
+
+                if (parts.Length > 0 && parts[^1] == parameterName)
                 {
                     indexToRemove = i;
                     break;
@@ -55,39 +60,55 @@ namespace Core.Refactorings
 
             string newParams = string.Join(", ", paramList);
 
-            string result =
-                code.Substring(0, match.Groups[2].Index) +
+            // =========================
+            // 2. REPLACE SIGNATURE (як у тебе)
+            // =========================
+            code =
+                code.Substring(0, match.Groups["params"].Index) +
                 newParams +
-                code.Substring(match.Groups[2].Index + match.Groups[2].Length);
+                code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
 
-            //  2. ВИКЛИКИ (ВАЖЛИВО: rebuild повністю)
-
+            // =========================
+            // 3. CALLS (REWRITE STYLE, NOT INDEX STYLE)
+            // =========================
             string callPattern = $@"\b{Regex.Escape(methodName)}\s*\(([^)]*)\)";
-            var callMatches = Regex.Matches(result, callPattern).ToList();
 
-            //  працюємо З КІНЦЯ
-            for (int i = callMatches.Count - 1; i >= 0; i--)
+            code = Regex.Replace(code, callPattern, m =>
             {
-                var call = callMatches[i];
-
-                var args = call.Groups[1].Value
+                var args = m.Groups[1].Value
                     .Split(',')
-                    .Select(a => a.Trim())
-                    .Where(a => a.Length > 0)
+                    .Select(a => Regex.Replace(a, @"\s+", " ").Trim())
+                    .Where(a => !string.IsNullOrWhiteSpace(a))
                     .ToList();
 
-                if (indexToRemove < args.Count)
-                    args.RemoveAt(indexToRemove);
+                var paramsInCall = args.ToList();
 
-                string newArgs = string.Join(", ", args);
+                // 🔥 знайти позицію через "логіку як у сигнатурі"
+                var sigParams = match.Groups["params"].Value
+                    .Split(',')
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .ToList();
 
-                result =
-                    result.Substring(0, call.Groups[1].Index) +
-                    newArgs +
-                    result.Substring(call.Groups[1].Index + call.Groups[1].Length);
-            }
+                int idx = -1;
 
-            return result;
+                for (int i = 0; i < sigParams.Count; i++)
+                {
+                    var parts = sigParams[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts[^1] == parameterName)
+                    {
+                        idx = i;
+                        break;
+                    }
+                }
+
+                if (idx >= 0 && idx < paramsInCall.Count)
+                    paramsInCall.RemoveAt(idx);
+
+                return $"{methodName}({string.Join(", ", paramsInCall)})";
+            });
+
+            return code;
         }
     }
 }
