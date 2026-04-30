@@ -152,7 +152,6 @@ namespace UI
                 new RenameVariableRefactoring(),
                 new RenameMethodRefactoring(),
                 new AddParameterRefactoring(),
-                new RemoveParameterRefactoring()
                 new RemoveParameterRefactoring(),
                 new BlockFormatterRefactoring()
             };
