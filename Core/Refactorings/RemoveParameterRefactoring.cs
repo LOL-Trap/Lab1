@@ -23,7 +23,7 @@ namespace Core.Refactorings
             if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(parameterName))
                 return code;
 
-            // 🔍 1. СИГНАТУРА
+            //  1. СИГНАТУРА
             string methodPattern = $@"(\b{Regex.Escape(methodName)}\s*\()([^)]*)(\))";
             var match = Regex.Match(code, methodPattern);
 
@@ -60,12 +60,12 @@ namespace Core.Refactorings
                 newParams +
                 code.Substring(match.Groups[2].Index + match.Groups[2].Length);
 
-            // 🔥 2. ВИКЛИКИ (ВАЖЛИВО: rebuild повністю)
+            //  2. ВИКЛИКИ (ВАЖЛИВО: rebuild повністю)
 
             string callPattern = $@"\b{Regex.Escape(methodName)}\s*\(([^)]*)\)";
             var callMatches = Regex.Matches(result, callPattern).ToList();
 
-            // 👉 працюємо З КІНЦЯ
+            //  працюємо З КІНЦЯ
             for (int i = callMatches.Count - 1; i >= 0; i--)
             {
                 var call = callMatches[i];
