@@ -3,6 +3,7 @@ using Core.Models;
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
 
 namespace Core.Refactorings
 {
@@ -10,7 +11,7 @@ namespace Core.Refactorings
     {
         public string Name => "Add Parameter";
 
-        public string Description => "Adds a new parameter to a method declaration and updates all method calls.";
+        public string Description => "Adds a new parameter to a method declaration and updates return.";
 
         public bool CanApply(string code)
         {
@@ -29,7 +30,7 @@ namespace Core.Refactorings
                 return code;
 
             // ======================
-            // 1. ОНОВЛЕННЯ СИГНАТУРИ
+            // 1. ЗНАХОДИМО МЕТОД
             // ======================
             string pattern = $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
             Match match = Regex.Match(code, pattern, RegexOptions.Singleline);
@@ -39,58 +40,39 @@ namespace Core.Refactorings
 
             string oldParams = match.Groups["params"].Value;
 
+            // ======================
+            // 2. НОРМАЛІЗАЦІЯ ПАРАМЕТРІВ
+            // ======================
             var paramList = oldParams
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Trim())
+                .Select(p => Regex.Replace(p, @"\s+", " ").Trim())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
                 .ToList();
 
+            // перевірка на дубль
             bool alreadyExists = paramList.Any(p =>
             {
-                var parts = p.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var parts = p.Split(' ');
                 return parts.Length >= 2 && parts.Last() == parameterName;
             });
 
-            if (alreadyExists)
-                return code;
+            if (!alreadyExists)
+            {
+                paramList.Add($"{parameterType} {parameterName}");
+            }
 
-            string newParameter = $"{parameterType} {parameterName}";
+            string newParams = string.Join(", ", paramList);
 
-            string newParams = string.IsNullOrWhiteSpace(oldParams)
-                ? newParameter
-                : oldParams.Trim() + ", " + newParameter;
-
-            // замінюємо тільки список параметрів
+            // ======================
+            // 3. ЗАМІНА СИГНАТУРИ
+            // ======================
             code =
                 code.Substring(0, match.Groups["params"].Index) +
                 newParams +
                 code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
 
             // ======================
-            // 2. ОНОВЛЕННЯ ВИКЛИКІВ МЕТОДУ
-            // ======================
-            string callPattern = $@"\b{Regex.Escape(methodName)}\s*\((?<args>[^)]*)\)";
-
-            code = Regex.Replace(code, callPattern, m =>
-            {
-                // пропускаємо сигнатуру методу
-                if (m.Index == match.Index)
-                    return m.Value;
-
-                string args = m.Groups["args"].Value.Trim();
-
-                // якщо аргумент вже є — не додаємо
-                if (args.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Any(a => a.Trim() == parameterName))
-                    return m.Value;
-
-                if (string.IsNullOrWhiteSpace(args))
-                    return $"{methodName}({parameterName})";
-
-                return $"{methodName}({args}, {parameterName})";
-            });
-
-            // ======================
-            // 3. ОНОВЛЕННЯ return
+            // 4. ОНОВЛЕННЯ return
             // ======================
             string returnPattern = @"return\s+(?<expr>[^;]+);";
 
@@ -98,7 +80,7 @@ namespace Core.Refactorings
             {
                 string expr = m.Groups["expr"].Value.Trim();
 
-                // якщо параметр вже є — нічого не робимо
+                // якщо вже є b — не дублюємо
                 if (expr.Split(',').Any(e => e.Trim() == parameterName))
                     return m.Value;
 
