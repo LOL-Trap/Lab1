@@ -10,14 +10,11 @@ namespace Core.Refactorings
     {
         public string Name => "Add Parameter";
 
-        public string Description => "Adds a new parameter to a method declaration.";
+        public string Description => "Adds a new parameter to a method declaration and updates all method calls.";
 
         public bool CanApply(string code)
         {
-            if (string.IsNullOrWhiteSpace(code))
-                return false;
-
-            return true;
+            return !string.IsNullOrWhiteSpace(code);
         }
 
         public string Apply(string code, RefactoringParameters parameters)
@@ -54,29 +51,36 @@ namespace Core.Refactorings
                 return code;
 
             string newParameter = $"{parameterType} {parameterName}";
-            string newParams;
 
-            if (string.IsNullOrWhiteSpace(oldParams))
-            {
-                newParams = newParameter;
-            }
-            else
-            {
-                newParams = oldParams.TrimEnd() + ", " + newParameter;
+            string newParams = string.IsNullOrWhiteSpace(oldParams)
+                ? newParameter
+                : oldParams.Trim() + ", " + newParameter;
 
-                if (oldParams.EndsWith(" "))
-                {
-                    int trailingSpaces = oldParams.Length - oldParams.TrimEnd().Length;
-                    newParams += new string(' ', trailingSpaces);
-                }
-            }
-
-            string result =
+            code =
                 code.Substring(0, match.Groups["params"].Index) +
                 newParams +
                 code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
 
-            return result;
+            string callPattern = $@"\b{Regex.Escape(methodName)}\s*\((?<args>[^)]*)\)";
+
+            code = Regex.Replace(code, callPattern, m =>
+            {
+                if (m.Index == match.Index)
+                    return m.Value;
+
+                string args = m.Groups["args"].Value.Trim();
+
+                if (args.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Any(a => a.Trim() == parameterName))
+                    return m.Value;
+
+                if (string.IsNullOrWhiteSpace(args))
+                    return $"{methodName}({parameterName})";
+
+                return $"{methodName}({args}, {parameterName})";
+            });
+
+            return code;
         }
     }
 }
