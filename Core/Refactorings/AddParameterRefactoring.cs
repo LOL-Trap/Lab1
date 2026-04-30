@@ -89,6 +89,22 @@ namespace Core.Refactorings
                 return $"{methodName}({args}, {parameterName})";
             });
 
+            // ======================
+            // 3. ОНОВЛЕННЯ return
+            // ======================
+            string returnPattern = @"return\s+(?<expr>[^;]+);";
+
+            code = Regex.Replace(code, returnPattern, m =>
+            {
+                string expr = m.Groups["expr"].Value.Trim();
+
+                // якщо параметр вже є — нічого не робимо
+                if (expr.Split(',').Any(e => e.Trim() == parameterName))
+                    return m.Value;
+
+                return $"return {expr}, {parameterName};";
+            });
+
             return code;
         }
     }
