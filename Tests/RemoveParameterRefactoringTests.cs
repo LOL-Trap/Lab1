@@ -32,7 +32,7 @@ namespace Tests
 
             var parameters = new RefactoringParameters();
             parameters.Parameters["methodName"] = "add";
-            parameters.Parameters["parameterName"] = "b"; 
+            parameters.Parameters["parameterName"] = "b";
 
             string expected = "int add(int a) { return 0; } add(5);";
 
@@ -124,7 +124,6 @@ namespace Tests
             var parameters = new RefactoringParameters();
             parameters.Parameters["methodName"] = "sum";
             parameters.Parameters["parameterName"] = "c";
-
             string expected = input;
 
             string result = refactoring.Apply(input, parameters);
