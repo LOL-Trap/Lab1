@@ -28,6 +28,9 @@ namespace Core.Refactorings
                 string.IsNullOrWhiteSpace(parameterName))
                 return code;
 
+            // ======================
+            // 1. ОНОВЛЕННЯ СИГНАТУРИ
+            // ======================
             string pattern = $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
             Match match = Regex.Match(code, pattern, RegexOptions.Singleline);
 
@@ -56,20 +59,26 @@ namespace Core.Refactorings
                 ? newParameter
                 : oldParams.Trim() + ", " + newParameter;
 
+            // замінюємо тільки список параметрів
             code =
                 code.Substring(0, match.Groups["params"].Index) +
                 newParams +
                 code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
 
+            // ======================
+            // 2. ОНОВЛЕННЯ ВИКЛИКІВ МЕТОДУ
+            // ======================
             string callPattern = $@"\b{Regex.Escape(methodName)}\s*\((?<args>[^)]*)\)";
 
             code = Regex.Replace(code, callPattern, m =>
             {
+                // пропускаємо сигнатуру методу
                 if (m.Index == match.Index)
                     return m.Value;
 
                 string args = m.Groups["args"].Value.Trim();
 
+                // якщо аргумент вже є — не додаємо
                 if (args.Split(',', StringSplitOptions.RemoveEmptyEntries)
                         .Any(a => a.Trim() == parameterName))
                     return m.Value;
