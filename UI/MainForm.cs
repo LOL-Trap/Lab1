@@ -153,6 +153,8 @@ namespace UI
                 new RenameMethodRefactoring(),
                 new AddParameterRefactoring(),
                 new RemoveParameterRefactoring()
+                new RemoveParameterRefactoring(),
+                new BlockFormatterRefactoring()
             };
 
             refactoringComboBox.Items.Clear();
@@ -216,6 +218,18 @@ namespace UI
                 newNameLabel.Visible = true;
                 newNameTextBox.Visible = true;
             }
+            else if (selectedName == "Block Formatter")
+            {
+                oldNameLabel.Text = "Brace Style:";
+                newNameLabel.Text = "Indent Size:";
+                oldNameLabel.Visible = true;
+                oldNameTextBox.Visible = true;
+                newNameLabel.Visible = true;
+                newNameTextBox.Visible = true;
+
+                oldNameTextBox.Text = "Allman";
+                newNameTextBox.Text = "4";
+            }
         }
 
         private void LoadButton_Click(object sender, EventArgs e)
@@ -277,6 +291,17 @@ namespace UI
                 {
                     parameters.Parameters["methodName"] = oldNameTextBox.Text;
                     parameters.Parameters["parameterName"] = newNameTextBox.Text;
+                }
+                else if (selectedName == "Block Formatter")
+                {
+                    parameters.Parameters["braceStyle"] = oldNameTextBox.Text;
+
+                    if (!int.TryParse(newNameTextBox.Text, out int indentSize))
+                    {
+                        indentSize = 4;
+                    }
+
+                    parameters.Parameters["indentSize"] = indentSize;
                 }
 
                 outputTextBox.Text = selectedRefactoring.Apply(inputTextBox.Text, parameters);
