@@ -3,7 +3,6 @@ using Core.Models;
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Collections.Generic;
 
 namespace Core.Refactorings
 {
@@ -11,7 +10,7 @@ namespace Core.Refactorings
     {
         public string Name => "Add Parameter";
 
-        public string Description => "Adds a new parameter to a method declaration and updates return.";
+        public string Description => "Adds a new parameter to a method declaration.";
 
         public bool CanApply(string code)
         {
@@ -27,12 +26,20 @@ namespace Core.Refactorings
             if (string.IsNullOrWhiteSpace(methodName) ||
                 string.IsNullOrWhiteSpace(parameterType) ||
                 string.IsNullOrWhiteSpace(parameterName))
+            {
                 return code;
+            }
 
-            // ======================
-            // 1. ЗНАХОДИМО МЕТОД
-            // ======================
-            string pattern = $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
+            // Підтримка:
+            // int sum(...)
+            // void print(...)
+            // int* getValue(...)
+            // int& getRef(...)
+            // std::vector<int> getList(...)
+            // MyClass(...)
+            string pattern =
+                $@"(?<before>\b[\w:<>\*&]+\s+)?(?<name>{Regex.Escape(methodName)})\s*\((?<params>[^)]*)\)";
+
             Match match = Regex.Match(code, pattern, RegexOptions.Singleline);
 
             if (!match.Success)
@@ -40,54 +47,53 @@ namespace Core.Refactorings
 
             string oldParams = match.Groups["params"].Value;
 
-            // ======================
-            // 2. НОРМАЛІЗАЦІЯ ПАРАМЕТРІВ
-            // ======================
             var paramList = oldParams
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => Regex.Replace(p, @"\s+", " ").Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
                 .ToList();
 
-            // перевірка на дубль
             bool alreadyExists = paramList.Any(p =>
             {
-                var parts = p.Split(' ');
-                return parts.Length >= 2 && parts.Last() == parameterName;
+                var parts = p.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                return parts.Length >= 2 &&
+                       parts.Last().Trim() == parameterName;
             });
 
-            if (!alreadyExists)
+            if (alreadyExists)
+                return code;
+
+            string newParameter = $"{parameterType} {parameterName}";
+            string newParams;
+
+            if (string.IsNullOrWhiteSpace(oldParams))
             {
-                paramList.Add($"{parameterType} {parameterName}");
+                // Зберігаємо відступи всередині ()
+                string leadingSpaces =
+                    new string(oldParams.TakeWhile(char.IsWhiteSpace).ToArray());
+
+                string trailingSpaces =
+                    new string(oldParams.Reverse().TakeWhile(char.IsWhiteSpace).Reverse().ToArray());
+
+                newParams = leadingSpaces + newParameter + trailingSpaces;
+            }
+            else
+            {
+                // Прибираємо лише пробіли справа для коректного додавання
+                string trimmedRight = oldParams.TrimEnd();
+
+                // Зберігаємо пробіли перед ')'
+                string trailingSpaces =
+                    oldParams.Substring(trimmedRight.Length);
+
+                newParams = trimmedRight + ", " + newParameter + trailingSpaces;
             }
 
-            string newParams = string.Join(", ", paramList);
-
-            // ======================
-            // 3. ЗАМІНА СИГНАТУРИ
-            // ======================
-            code =
+            string result =
                 code.Substring(0, match.Groups["params"].Index) +
                 newParams +
                 code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
 
-            // ======================
-            // 4. ОНОВЛЕННЯ return
-            // ======================
-            string returnPattern = @"return\s+(?<expr>[^;]+);";
-
-            code = Regex.Replace(code, returnPattern, m =>
-            {
-                string expr = m.Groups["expr"].Value.Trim();
-
-                // якщо вже є b — не дублюємо
-                if (expr.Split(',').Any(e => e.Trim() == parameterName))
-                    return m.Value;
-
-                return $"return {expr}, {parameterName};";
-            });
-
-            return code;
+            return result;
         }
     }
 }

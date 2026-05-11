@@ -1,76 +1,256 @@
-﻿using Core.Interfaces;
+﻿using Core.Refactorings;
 using Core.Models;
-using System;
-using System.Linq;
-using System.Text.RegularExpressions;
 
-namespace Core.Refactorings
+namespace Tests
 {
-    public class AddParameterRefactoring : IRefactoring
+    public class AddParameterTests
     {
-        public string Name => "Add Parameter";
-
-        public string Description => "Adds a new parameter to a method declaration.";
-
-        public bool CanApply(string code)
+        [Fact]
+        public void Apply_Adds_Parameter_To_End()
         {
-            return !string.IsNullOrWhiteSpace(code);
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int sum(int a) { return a; }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "sum";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "b";
+
+            string expected = "int sum(int a, int b) { return a; }";
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
         }
 
-        public string Apply(string code, RefactoringParameters parameters)
+        [Fact]
+        public void Apply_Adds_Parameter_To_Empty_List()
         {
-            string methodName = parameters.Get<string>("methodName");
-            string parameterType = parameters.Get<string>("parameterType");
-            string parameterName = parameters.Get<string>("parameterName");
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int sum() { return 0; }";
 
-            if (string.IsNullOrWhiteSpace(methodName) ||
-                string.IsNullOrWhiteSpace(parameterType) ||
-                string.IsNullOrWhiteSpace(parameterName))
-                return code;
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "sum";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "a";
 
-            // шукаємо метод
-            string pattern = $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
-            Match match = Regex.Match(code, pattern, RegexOptions.Singleline);
+            string expected = "int sum(int a) { return 0; }";
 
-            if (!match.Success)
-                return code;
+            string result = refactoring.Apply(inputCode, parameters);
 
-            string oldParams = match.Groups["params"].Value;
+            Assert.Equal(expected, result);
+        }
 
-            // перевірка чи параметр вже існує
-            var paramList = oldParams
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Trim());
+        [Fact]
+        public void Apply_Adds_Parameter_To_Void_Method()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "void print(int a) { }";
 
-            bool alreadyExists = paramList.Any(p =>
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "print";
+            parameters.Parameters["parameterType"] = "string";
+            parameters.Parameters["parameterName"] = "text";
+
+            string expected = "void print(int a, string text) { }";
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_Adds_Parameter_With_Spaces()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int sum( int a ) { return a; }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "sum";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "b";
+
+            string expected = "int sum( int a, int b ) { return a; }";
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_Adds_Parameter_To_Method_With_Multiple_Params()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int calc(int a, int b) { return a + b; }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "calc";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "c";
+
+            string expected = "int calc(int a, int b, int c) { return a + b; }";
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_AddParameter_In_Multiline_Method()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode =
+            @"void printSum(int a)
             {
-                var parts = p.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                return parts.Length >= 2 && parts.Last() == parameterName;
-            });
+                Console.WriteLine(a);
+            }";
 
-            if (alreadyExists)
-                return code;
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "printSum";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "b";
 
-            string newParameter = $"{parameterType} {parameterName}";
-            string newParams;
-
-            if (string.IsNullOrWhiteSpace(oldParams))
+            string expected =
+            @"void printSum(int a, int b)
             {
-                newParams = newParameter;
-            }
-            else
-            {
-                // 🔑 ЗБЕРІГАЄМО ФОРМАТУВАННЯ
-                newParams = oldParams + ", " + newParameter;
-            }
+                Console.WriteLine(a);
+            }";
 
-            // замінюємо тільки параметри
-            string result =
-                code.Substring(0, match.Groups["params"].Index) +
-                newParams +
-                code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
+            string result = refactoring.Apply(inputCode, parameters);
 
-            return result;
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_Method_Not_Found()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int sum(int a) { return a; }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "calculate";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "b";
+
+            string expected = inputCode;
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_Parameter_Already_Exists()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int sum(int a, int b) { return a + b; }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "sum";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "b";
+
+            string expected = inputCode;
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_Adds_String_Parameter()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "void log() { }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "log";
+            parameters.Parameters["parameterType"] = "string";
+            parameters.Parameters["parameterName"] = "message";
+
+            string expected = "void log(string message) { }";
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_Adds_Parameter_To_Method_With_Extra_Spaces()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string inputCode = "int test(  int a,   int b ) { return a + b; }";
+
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "test";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "c";
+
+            string expected = "int test(  int a,   int b, int c ) { return a + b; }";
+
+            string result = refactoring.Apply(inputCode, parameters);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Constructor()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "class MyClass {\npublic:\n    MyClass() {}\n};";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "MyClass";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "value";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("MyClass(int value)", result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Method_With_PointerReturnType()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "int* getValue() { return nullptr; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "getValue";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "idx";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("getValue(int idx)", result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Method_With_ReferenceReturnType()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "int& getRef() { return value; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "getRef";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "idx";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("getRef(int idx)", result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Method_With_TemplateReturnType()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "std::vector<int> getList() { return {}; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "getList";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "size";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("getList(int size)", result);
         }
     }
 }
