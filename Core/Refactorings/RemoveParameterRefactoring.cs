@@ -1,114 +1,93 @@
 ﻿using Core.Interfaces;
 using Core.Models;
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Linq;
 
 namespace Core.Refactorings
 {
     public class RemoveParameterRefactoring : IRefactoring
     {
         public string Name => "Remove Parameter";
-        public string Description => "Removes a parameter from a method declaration and its calls.";
+        public string Description => "Removes an unused parameter from a method declaration.";
 
-        public bool CanApply(string code) => true;
+        public bool CanApply(string code)
+        {
+            return true;
+        }
 
         public string Apply(string code, RefactoringParameters parameters)
         {
             string methodName = parameters.Get<string>("methodName");
             string parameterName = parameters.Get<string>("parameterName");
 
-            if (string.IsNullOrWhiteSpace(methodName) ||
-                string.IsNullOrWhiteSpace(parameterName))
+            if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(parameterName))
                 return code;
 
-            // =========================
-            // 1. SIGNATURE (як у тебе)
-            // =========================
             string pattern =
-                $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
+                $@"(?:void|int|string|double|float|bool|char|long|short|byte|decimal|[\w<>]+\s*\*?)\s+{Regex.Escape(methodName)}\s*\(([^)]*)\)";
 
             var match = Regex.Match(code, pattern, RegexOptions.Singleline);
 
             if (!match.Success)
                 return code;
 
-            string oldParams = match.Groups["params"].Value;
+            string paramList = match.Groups[1].Value;
 
-            var paramList = oldParams
-                .Split(',')
-                .Select(p => Regex.Replace(p, @"\s+", " ").Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .ToList();
-
-            int indexToRemove = -1;
-
-            for (int i = 0; i < paramList.Count; i++)
-            {
-                var parts = paramList[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                if (parts.Length > 0 && parts[^1] == parameterName)
-                {
-                    indexToRemove = i;
-                    break;
-                }
-            }
-
-            if (indexToRemove == -1)
+            if (string.IsNullOrWhiteSpace(paramList))
                 return code;
 
-            paramList.RemoveAt(indexToRemove);
+            var parametersList = paramList.Split(',');
+            List<string> newParams = new List<string>();
 
-            string newParams = string.Join(", ", paramList);
-
-            // =========================
-            // 2. REPLACE SIGNATURE (як у тебе)
-            // =========================
-            code =
-                code.Substring(0, match.Groups["params"].Index) +
-                newParams +
-                code.Substring(match.Groups["params"].Index + match.Groups["params"].Length);
-
-            // =========================
-            // 3. CALLS (REWRITE STYLE, NOT INDEX STYLE)
-            // =========================
-            string callPattern = $@"\b{Regex.Escape(methodName)}\s*\(([^)]*)\)";
-
-            code = Regex.Replace(code, callPattern, m =>
+            foreach (var param in parametersList)
             {
-                var args = m.Groups[1].Value
-                    .Split(',')
-                    .Select(a => Regex.Replace(a, @"\s+", " ").Trim())
-                    .Where(a => !string.IsNullOrWhiteSpace(a))
-                    .ToList();
+                string trimmed = param.Trim();
 
-                var paramsInCall = args.ToList();
+                string withoutDefault = trimmed.Split('=')[0].Trim();
 
-                // 🔥 знайти позицію через "логіку як у сигнатурі"
-                var sigParams = match.Groups["params"].Value
-                    .Split(',')
-                    .Select(p => p.Trim())
-                    .Where(p => !string.IsNullOrWhiteSpace(p))
-                    .ToList();
+                string[] parts = withoutDefault.Split(
+                    new char[] { ' ' },
+                    StringSplitOptions.RemoveEmptyEntries);
 
-                int idx = -1;
+                if (parts.Length == 0)
+                    continue;
 
-                for (int i = 0; i < sigParams.Count; i++)
-                {
-                    var parts = sigParams[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts[^1] == parameterName)
-                    {
-                        idx = i;
-                        break;
-                    }
-                }
+                string name = parts[^1].TrimStart('*', '&');
 
-                if (idx >= 0 && idx < paramsInCall.Count)
-                    paramsInCall.RemoveAt(idx);
+                if (name != parameterName)
+                    newParams.Add(param);
+            }
 
-                return $"{methodName}({string.Join(", ", paramsInCall)})";
-            });
+            if (newParams.Count == parametersList.Length)
+                return code;
 
-            return code;
+            bool removedFirstParameter =
+                parametersList.Length > 0 &&
+                parametersList[0].Contains(parameterName);
+
+            string newParamList;
+
+            if (removedFirstParameter && newParams.Count > 0)
+            {
+                bool firstWasPointer = parametersList[0].Contains("*");
+
+                if (firstWasPointer)
+                    newParamList = string.Join(",", newParams).TrimStart();
+                else
+                    newParamList = " " + string.Join(",", newParams).TrimStart();
+            }
+            else
+            {
+                newParamList = string.Join(",", newParams);
+            }
+
+            string result =
+                code.Substring(0, match.Groups[1].Index) +
+                newParamList +
+                code.Substring(match.Groups[1].Index + match.Groups[1].Length);
+
+            return result;
         }
     }
 }
