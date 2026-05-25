@@ -14,10 +14,7 @@ namespace Core.Refactorings
 
         public bool CanApply(string code)
         {
-            if (string.IsNullOrWhiteSpace(code))
-                return false;
-
-            return true;
+            return !string.IsNullOrWhiteSpace(code);
         }
 
         public string Apply(string code, RefactoringParameters parameters)
@@ -29,9 +26,20 @@ namespace Core.Refactorings
             if (string.IsNullOrWhiteSpace(methodName) ||
                 string.IsNullOrWhiteSpace(parameterType) ||
                 string.IsNullOrWhiteSpace(parameterName))
+            {
                 return code;
+            }
 
-            string pattern = $@"(?<start>\b\w+\s+{Regex.Escape(methodName)}\s*\()(?<params>[^)]*)(?<end>\))";
+            // Підтримка:
+            // int sum(...)
+            // void print(...)
+            // int* getValue(...)
+            // int& getRef(...)
+            // std::vector<int> getList(...)
+            // MyClass(...)
+            string pattern =
+                $@"(?<before>\b[\w:<>\*&]+\s+)?(?<name>{Regex.Escape(methodName)})\s*\((?<params>[^)]*)\)";
+
             Match match = Regex.Match(code, pattern, RegexOptions.Singleline);
 
             if (!match.Success)
@@ -47,7 +55,8 @@ namespace Core.Refactorings
             bool alreadyExists = paramList.Any(p =>
             {
                 var parts = p.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                return parts.Length >= 2 && parts.Last() == parameterName;
+                return parts.Length >= 2 &&
+                       parts.Last().Trim() == parameterName;
             });
 
             if (alreadyExists)
@@ -58,17 +67,25 @@ namespace Core.Refactorings
 
             if (string.IsNullOrWhiteSpace(oldParams))
             {
-                newParams = newParameter;
+                // Зберігаємо відступи всередині ()
+                string leadingSpaces =
+                    new string(oldParams.TakeWhile(char.IsWhiteSpace).ToArray());
+
+                string trailingSpaces =
+                    new string(oldParams.Reverse().TakeWhile(char.IsWhiteSpace).Reverse().ToArray());
+
+                newParams = leadingSpaces + newParameter + trailingSpaces;
             }
             else
             {
-                newParams = oldParams.TrimEnd() + ", " + newParameter;
+                // Прибираємо лише пробіли справа для коректного додавання
+                string trimmedRight = oldParams.TrimEnd();
 
-                if (oldParams.EndsWith(" "))
-                {
-                    int trailingSpaces = oldParams.Length - oldParams.TrimEnd().Length;
-                    newParams += new string(' ', trailingSpaces);
-                }
+                // Зберігаємо пробіли перед ')'
+                string trailingSpaces =
+                    oldParams.Substring(trimmedRight.Length);
+
+                newParams = trimmedRight + ", " + newParameter + trailingSpaces;
             }
 
             string result =

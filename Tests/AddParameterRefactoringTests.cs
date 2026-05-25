@@ -192,5 +192,65 @@ namespace Tests
 
             Assert.Equal(expected, result);
         }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Constructor()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "class MyClass {\npublic:\n    MyClass() {}\n};";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "MyClass";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "value";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("MyClass(int value)", result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Method_With_PointerReturnType()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "int* getValue() { return nullptr; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "getValue";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "idx";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("getValue(int idx)", result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Method_With_ReferenceReturnType()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "int& getRef() { return value; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "getRef";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "idx";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("getRef(int idx)", result);
+        }
+
+        [Fact]
+        public void Apply_AddsParameter_To_Method_With_TemplateReturnType()
+        {
+            var refactoring = new AddParameterRefactoring();
+            string code = "std::vector<int> getList() { return {}; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "getList";
+            parameters.Parameters["parameterType"] = "int";
+            parameters.Parameters["parameterName"] = "size";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("getList(int size)", result);
+        }
     }
 }
