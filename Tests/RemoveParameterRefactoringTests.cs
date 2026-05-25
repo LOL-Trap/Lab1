@@ -224,5 +224,61 @@ namespace Tests
             // Assert
             Assert.Equal(expected, result);
         }
+
+        [Fact]
+        public void Apply_Removes_Parameter_From_Declaration_Even_When_Call_Comes_First()
+        {
+            var refactoring = new RemoveParameterRefactoring();
+            string code = "void test() { fn(1, 2); }\nvoid fn(int a, int b) {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "fn";
+            parameters.Parameters["parameterName"] = "b";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("fn(int a)", result);
+        }
+
+        [Fact]
+        public void Apply_DoesNot_Modify_Method_Inside_StringLiteral()
+        {
+            var refactoring = new RemoveParameterRefactoring();
+            string code = "const char* doc = \"sum(int x, int y) computes\";\nint sum(int x, int y) { return x + y; }";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "sum";
+            parameters.Parameters["parameterName"] = "y";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Contains("\"sum(int x, int y) computes\"", result);
+        }
+
+        [Fact]
+        public void Apply_Removes_Parameter_With_DefaultValue()
+        {
+            var refactoring = new RemoveParameterRefactoring();
+            string code = "void foo(int x, int y = 10) {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "foo";
+            parameters.Parameters["parameterName"] = "y";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Equal("void foo(int x) {}", result);
+        }
+
+        [Fact]
+        public void Apply_Removes_First_Parameter_WithoutLeadingSpace()
+        {
+            var refactoring = new RemoveParameterRefactoring();
+            string code = "void process(int* ptr, int size) {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["methodName"] = "process";
+            parameters.Parameters["parameterName"] = "ptr";
+
+            string result = refactoring.Apply(code, parameters);
+
+            Assert.Equal("void process(int size) {}", result);
+        }
     }
 }
