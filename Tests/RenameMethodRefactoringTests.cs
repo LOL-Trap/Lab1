@@ -214,5 +214,65 @@ namespace Tests
 
             Assert.Equal(expected, result);
         }
+
+        [Fact]
+        public void Apply_DoesNotRename_Variable_With_Same_Name_As_Method()
+        {
+            var refactoring = new RenameMethodRefactoring();
+            string code = "int foo = 10;\nvoid foo() {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "foo";
+            parameters.Parameters["newName"] = "bar";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "int foo = 10;\nvoid bar() {}";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_DoesNotRename_Inside_StringLiteral()
+        {
+            var refactoring = new RenameMethodRefactoring();
+            string code = "void log() { printf(\"foo called\\n\"); }\nvoid foo() {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "foo";
+            parameters.Parameters["newName"] = "bar";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "void log() { printf(\"foo called\\n\"); }\nvoid bar() {}";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_DoesNotRename_Inside_Comment()
+        {
+            var refactoring = new RenameMethodRefactoring();
+            string code = "// foo is a deprecated method\nvoid foo() {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "foo";
+            parameters.Parameters["newName"] = "bar";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "// foo is a deprecated method\nvoid bar() {}";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_DoesNotRename_When_NameIsPart_Of_AnotherIdentifier()
+        {
+            var refactoring = new RenameMethodRefactoring();
+            string code = "void foo() {}\nvoid foo_bar() {}\nvoid my_foo() {}";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "foo";
+            parameters.Parameters["newName"] = "renamed";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "void renamed() {}\nvoid foo_bar() {}\nvoid my_foo() {}";
+            Assert.Equal(expected, result);
+        }
     }
 }
