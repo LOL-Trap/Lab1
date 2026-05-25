@@ -195,5 +195,65 @@ namespace Tests
 
             Assert.Throws<ArgumentException>(() => refactoring.Apply(code, parameters));
         }
+
+        [Fact]
+        public void Apply_DoesNotRename_Inside_StringLiteral()
+        {
+            var refactoring = new RenameVariableRefactoring();
+            string code = "const char* msg = \"x is a variable\"; int x = 5;";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "x";
+            parameters.Parameters["newName"] = "count";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "const char* msg = \"x is a variable\"; int count = 5;";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_DoesNotRename_Inside_SingleLineComment()
+        {
+            var refactoring = new RenameVariableRefactoring();
+            string code = "// x represents counter\nint x = 5;";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "x";
+            parameters.Parameters["newName"] = "count";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "// x represents counter\nint count = 5;";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_DoesNotRename_Inside_MultiLineComment()
+        {
+            var refactoring = new RenameVariableRefactoring();
+            string code = "/* variable x stores the count */\nint x = 5;";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "x";
+            parameters.Parameters["newName"] = "count";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "/* variable x stores the count */\nint count = 5;";
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Apply_DoesNotRename_Inside_CharLiteral()
+        {
+            var refactoring = new RenameVariableRefactoring();
+            string code = "char c = 'x'; int x = 5;";
+            var parameters = new RefactoringParameters();
+            parameters.Parameters["oldName"] = "x";
+            parameters.Parameters["newName"] = "count";
+
+            string result = refactoring.Apply(code, parameters);
+
+            string expected = "char c = 'x'; int count = 5;";
+            Assert.Equal(expected, result);
+        }
     }
 }
