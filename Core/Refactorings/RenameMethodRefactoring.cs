@@ -12,7 +12,6 @@ namespace Core.Refactorings
 
         public bool CanApply(string code)
         {
-            // Заглушка
             return true;
         }
 
@@ -24,7 +23,6 @@ namespace Core.Refactorings
             if (string.IsNullOrWhiteSpace(oldName) || string.IsNullOrWhiteSpace(newName))
                 return code;
 
-            // Список ключових слів 
             var reservedKeywords = new HashSet<string>
             {
                 "class", "void", "int", "string", "public", "private",
@@ -32,12 +30,10 @@ namespace Core.Refactorings
                 "while", "switch", "case", "break", "continue", "new"
             };
 
-            // 5 тест — перевірка на ключове слово
             if (reservedKeywords.Contains(newName))
                 throw new InvalidOperationException("New name is a reserved keyword");
 
-            // Тільки повне співпадіння слова
-            string pattern = $@"\b{oldName}\b";
+            string pattern = $@"\b{oldName}\b(?=\s*\()";
 
             string result = Regex.Replace(code, pattern, newName);
 
