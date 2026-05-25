@@ -1,5 +1,7 @@
 ﻿using Core.Interfaces;
 using Core.Models;
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace Core.Refactorings
@@ -22,73 +24,70 @@ namespace Core.Refactorings
             if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(parameterName))
                 return code;
 
-            // Знаходимо дужки методу
-            string pattern = $@"\b{Regex.Escape(methodName)}\s*\(([^)]*)\)";
+            string pattern =
+                $@"(?:void|int|string|double|float|bool|char|long|short|byte|decimal|[\w<>]+\s*\*?)\s+{Regex.Escape(methodName)}\s*\(([^)]*)\)";
+
             var match = Regex.Match(code, pattern, RegexOptions.Singleline);
+
             if (!match.Success)
                 return code;
 
             string paramList = match.Groups[1].Value;
-            int paramStartIndex = match.Groups[1].Index;
 
             if (string.IsNullOrWhiteSpace(paramList))
                 return code;
 
-            int currentIndex = 0;
-            bool removed = false;
+            var parametersList = paramList.Split(',');
+            List<string> newParams = new List<string>();
 
-            while (currentIndex < paramList.Length)
+            foreach (var param in parametersList)
             {
-                int commaIndex = paramList.IndexOf(',', currentIndex);
-                int endIndex = commaIndex >= 0 ? commaIndex : paramList.Length;
+                string trimmed = param.Trim();
 
-                string paramSubstring = paramList.Substring(currentIndex, endIndex - currentIndex);
-                string trimmed = paramSubstring.Trim();
-                string[] parts = trimmed.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
-                string name = parts.Length > 0 ? parts[^1] : "";
+                string withoutDefault = trimmed.Split('=')[0].Trim();
 
-                if (!removed && name == parameterName)
-                {
-                    removed = true;
+                string[] parts = withoutDefault.Split(
+                    new char[] { ' ' },
+                    StringSplitOptions.RemoveEmptyEntries);
 
-                    // Якщо перший параметр і після '(' є пробіл, видаляємо його також
-                    bool isFirst = currentIndex == 0;
-                    int removeLength = endIndex - currentIndex;
+                if (parts.Length == 0)
+                    continue;
 
-                    if (commaIndex >= 0)
-                    {
-                        // Якщо не останній параметр, видаляємо кома після нього
-                        removeLength += 1;
-                    }
-                    else
-                    {
-                        // Якщо останній параметр і перед ним кома, видаляємо її
-                        if (currentIndex > 0 && paramList[currentIndex - 1] == ',')
-                        {
-                            currentIndex -= 1;
-                            removeLength += 1;
-                        }
-                    }
+                string name = parts[^1].TrimStart('*', '&');
 
-                    // Для першого параметра видаляємо пробіл після '('
-                    if (isFirst && currentIndex > 0 && paramList[currentIndex - 1] == ' ')
-                    {
-                        currentIndex -= 1;
-                        removeLength += 1;
-                    }
-
-                    paramList = paramList.Remove(currentIndex, removeLength);
-                    break;
-                }
-
-                currentIndex = endIndex + 1;
+                if (name != parameterName)
+                    newParams.Add(param);
             }
 
-            string newCode = code.Substring(0, paramStartIndex) +
-                             paramList +
-                             code.Substring(paramStartIndex + match.Groups[1].Length);
+            if (newParams.Count == parametersList.Length)
+                return code;
 
-            return newCode;
+            bool removedFirstParameter =
+                parametersList.Length > 0 &&
+                parametersList[0].Contains(parameterName);
+
+            string newParamList;
+
+            if (removedFirstParameter && newParams.Count > 0)
+            {
+                bool firstWasPointer = parametersList[0].Contains("*");
+
+                if (firstWasPointer)
+                    newParamList = string.Join(",", newParams).TrimStart();
+                else
+                    newParamList = " " + string.Join(",", newParams).TrimStart();
+            }
+            else
+            {
+                newParamList = string.Join(",", newParams);
+            }
+
+            string result =
+                code.Substring(0, match.Groups[1].Index) +
+                newParamList +
+                code.Substring(match.Groups[1].Index + match.Groups[1].Length);
+
+            return result;
         }
     }
 }
