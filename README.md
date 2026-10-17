@@ -11,7 +11,4 @@
 - [10] Remove Parameter - видалення параметра
 
 ## Команда розробників
-- [Арвін] - Rename Variable
-- [Максим] - Rename Method
-- [Анастасія] - Add Parameter
-- [Кира] - Remove Parameter
+Проєкт розроблено командою з чотирьох учасників.
